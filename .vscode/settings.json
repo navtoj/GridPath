@@ -1,0 +1,8 @@
+{
+	"search.exclude": {
+		"**/src/lib/components/ui": true
+	},
+	"explorer.autoRevealExclude": {
+		"**/src/lib/components/ui": true
+	}
+}
