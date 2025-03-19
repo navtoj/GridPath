@@ -65,9 +65,8 @@
 	let path = $derived.by(() => {
 		if ($algorithm === 'dfs') {
 			return dfs(board.matrix);
-		} else if ($algorithm === 'a*') {
-			const algo = new aStar(board.matrix);
-			return algo.findBestPath();
+		} else if ($algorithm === 'aStar') {
+			return aStar(board.matrix);
 		} else {
 			return [];
 		}
@@ -127,8 +126,9 @@
 		</div>
 		<div class="flex items-center gap-3">
 			{#if board.path}
-				{@const isCorrect =
-					path.map(([x, y]) => y * board.matrix.length + x + 1).join('') === board.path.join('')}
+				{@const isCorrect = path
+					.map(([x, y]) => y * board.matrix.length + x + 1)
+					.every((position) => board.path?.includes(position))}
 				<div class="flex flex-row rounded-none border border-dashed px-2.5 py-1.5">
 					<CheckCheck class={[!isCorrect && 'text-muted']} />
 				</div>
@@ -149,14 +149,14 @@
 						for="dfs">DFS</Label
 					>
 				</div>
-				<div class="flex items-center pl-2.5 {[$algorithm === 'a*' && 'bg-muted']}">
+				<div class="flex items-center pl-2.5 {[$algorithm === 'aStar' && 'bg-muted']}">
 					<RadioGroup.Item
-						value="a*"
-						id="a*"
+						value="aStar"
+						id="aStar"
 					/>
 					<Label
 						class="ml-0 inline-flex h-full cursor-pointer items-center p-2.5"
-						for="a*">A*</Label
+						for="aStar">A*</Label
 					>
 				</div>
 			</RadioGroup.Root>

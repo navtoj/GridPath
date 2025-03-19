@@ -1,51 +1,48 @@
-function algorithm(matrix: number[][]): number[][] {
+export default function algorithm(matrix: number[][]): number[][] {
 	const n = matrix.length;
-	let maxPath: number[][] = [];
 	let maxValue = -Infinity;
+	let maxPath: number[][] = [];
 
-	function findPath(
-		x: number,
-		y: number,
-		currentPath: number[][],
-		currentValue: number,
-		visited: Set<string>
-	) {
-		// out of bounds
-		if (x < 0 || x >= n || y < 0 || y >= n) {
-			return;
-		}
-
-		// already visited
-		const coordString = `${x},${y}`;
-		if (visited.has(coordString)) {
-			return;
-		}
-
-		// reached the end (n-1, n-1)
+	function findPath(x: number, y: number, value: number, path: number[][], visited: Set<string>) {
+		// reached the end
 		if (x === n - 1 && y === n - 1) {
-			if (currentValue > maxValue) {
-				maxValue = currentValue;
-				// create a copy of the path
-				maxPath = [...currentPath, [x, y]];
+			if (value > maxValue) {
+				maxValue = value;
+				maxPath = [...path, [x, y]];
 			}
 			return;
 		}
 
-		// add point to visited set and path
-		visited.add(coordString);
-		const newPath = [...currentPath, [x, y]];
-		// dont add the value of (0,0)
-		const newValue = x !== 0 || y !== 0 ? currentValue + matrix[y][x] : currentValue;
+		// add point to path and visited set
+		const newValue = value + matrix[y][x];
+		const newPath = [...path, [x, y]];
+		visited.add(`${x},${y}`);
 
-		// explore all directions
-		findPath(x + 1, y, newPath, newValue, new Set(visited));
-		findPath(x - 1, y, newPath, newValue, new Set(visited));
-		findPath(x, y + 1, newPath, newValue, new Set(visited));
-		findPath(x, y - 1, newPath, newValue, new Set(visited));
+		// next possible steps
+		for (const [dx, dy] of [
+			[-1, 0],
+			[0, 1],
+			[1, 0],
+			[0, -1]
+		]) {
+			const nextX = x + dx;
+			const nextY = y + dy;
+
+			// out of bounds
+			if (nextX < 0 || nextX >= n || nextY < 0 || nextY >= n) {
+				continue;
+			}
+
+			// already visited
+			if (visited.has(`${nextX},${nextY}`)) {
+				continue;
+			}
+
+			// explore promising direction
+			findPath(nextX, nextY, newValue, newPath, new Set(visited));
+		}
 	}
 
-	findPath(0, 0, [], 0, new Set());
+	findPath(0, 0, 0, [], new Set());
 	return maxPath;
 }
-
-export default algorithm;
