@@ -4,7 +4,7 @@ Demo: https://gridpath.pages.dev
 
 ## Requirements
 
-- Node Package Manager
+- Node Package Manager[^1]
 
 ## Install Dependencies
 
@@ -12,16 +12,16 @@ Demo: https://gridpath.pages.dev
 npm install
 ```
 
-## Run Application
+## Build Application
 
 ```bash
-npm run dev -- --open
+npm run build
 ```
 
-## Handle Error
-
-If you encounter any errors, delete `node_modules` folder and try again.
+## Open in Browser
 
 ```bash
-rm -rf node_modules
+npm run preview -- --open
 ```
+
+[^1]: https://docs.npmjs.com/downloading-and-installing-node-js-and-npm
