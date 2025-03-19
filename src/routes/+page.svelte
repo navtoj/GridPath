@@ -17,6 +17,8 @@
 	import * as RadioGroup from '$lib/components/ui/radio-group';
 	import { Label } from '$lib/components/ui/label';
 	import { algorithm } from '$lib/stores';
+	import { dev } from '$app/environment';
+	import Github from '@lucide/svelte/icons/github';
 
 	const grid = {
 		min: 2,
@@ -34,10 +36,8 @@
 			grid.max
 		);
 	}
-	function getSeed(params: URLSearchParams, id: string) {
-		return params.has('seed')
-			? parseInt(params.get('seed')!)
-			: parseInt(id.replace(/[a-z]/gi, (char) => `${char.toLowerCase().charCodeAt(0) - 96}`));
+	function getSeed(params: URLSearchParams) {
+		return params.has('seed') ? parseInt(params.get('seed')!) : null;
 	}
 	function getBoard(n: number, known: boolean, seed: number) {
 		let board = known ? boards.find(({ matrix }) => matrix.length === n) : undefined;
@@ -55,7 +55,10 @@
 
 	let size = $derived(getSize(page.url.searchParams));
 	const id = $props.id();
-	let seed = $derived(getSeed(page.url.searchParams, id));
+	const defaultSeed = parseInt(
+		id.replace(/[a-z]/gi, (char) => `${char.toLowerCase().charCodeAt(0) - 96}`)
+	);
+	let seed = $derived(getSeed(page.url.searchParams) ?? defaultSeed);
 	let board = $derived.by(() =>
 		getBoard(size, !untrack(() => page.url.searchParams).has('seed'), seed)
 	);
@@ -77,43 +80,51 @@
 </script>
 
 <main class="flex h-dvh select-none flex-col gap-3 p-4">
-	<header class="flex flex-wrap items-center justify-between gap-3">
-		<div class="flex items-center gap-3">
+	<header class="flex items-center justify-between gap-3">
+		<div class="flex h-full basis-1/3 gap-2">
 			<a
 				href="/"
-				data-sveltekit-reload={page.url.searchParams.has('size')}
-				class:cursor-default={page.url.searchParams.has('size') === false}
-				class="text-nowrap border border-dashed p-1 px-2.5 text-xl font-semibold">Grid Path</a
+				class="text-nowrap border border-dashed p-1 px-2.5 text-xl font-semibold {[
+					!page.url.searchParams.has('seed') &&
+						!page.url.searchParams.has('size') &&
+						'cursor-default'
+				]}">Grid Path</a
 			>
+			<div class="flex h-full gap-1">
+				<Button
+					class="h-full rounded-none"
+					variant="outline"
+					size="icon"
+					disabled={size <= grid.min}
+					onclick={() => {
+						page.url.searchParams.delete('seed');
+						page.url.searchParams.set('size', Math.max(grid.min, size - 1).toString());
+						goto('?' + page.url.searchParams.toString());
+					}}
+				>
+					<Minus />
+				</Button>
+				<p class="rounded-none border border-dashed px-2.5 py-1.5 font-medium">{size}</p>
+				<Button
+					class="h-full rounded-none"
+					variant="outline"
+					size="icon"
+					disabled={size >= grid.max}
+					onclick={() => {
+						page.url.searchParams.delete('seed');
+						page.url.searchParams.set('size', Math.min(grid.max, size + 1).toString());
+						goto('?' + page.url.searchParams.toString());
+					}}
+				>
+					<Plus />
+				</Button>
+			</div>
 			<Button
-				class="rounded-none"
-				variant="outline"
-				size="icon"
-				disabled={size <= grid.min}
-				onclick={() => {
-					page.url.searchParams.delete('seed');
-					page.url.searchParams.set('size', Math.max(grid.min, size - 1).toString());
-					goto('?' + page.url.searchParams.toString());
-				}}
-			>
-				<Minus />
-			</Button>
-			<p class="rounded-none border border-dashed px-2.5 py-1.5 font-medium">{size}</p>
-			<Button
-				class="rounded-none"
-				variant="outline"
-				size="icon"
-				disabled={size >= grid.max}
-				onclick={() => {
-					page.url.searchParams.delete('seed');
-					page.url.searchParams.set('size', Math.min(grid.max, size + 1).toString());
-					goto('?' + page.url.searchParams.toString());
-				}}
-			>
-				<Plus />
-			</Button>
-			<Button
-				class="rounded-none"
+				class="h-full rounded-none {[
+					!page.url.searchParams.has('seed') &&
+						!page.url.searchParams.has('size') &&
+						'animate-pulse'
+				]}"
 				variant="outline"
 				onclick={() => {
 					page.url.searchParams.set('seed', `${seed + 1}`);
@@ -121,15 +132,7 @@
 				}}><Shuffle />Shuffle</Button
 			>
 		</div>
-		<div class="flex items-center gap-3">
-			{#if board.path}
-				{@const isCorrect = path
-					.map(([x, y]) => y * board.matrix.length + x + 1)
-					.every((position) => board.path?.includes(position))}
-				<div class="flex flex-row rounded-none border border-dashed px-2.5 py-1.5">
-					<CheckCheck class={[!isCorrect && 'text-muted']} />
-				</div>
-			{/if}
+		<div class="flex h-full basis-1/3 justify-center">
 			<RadioGroup.Root
 				class="grid-flow-col gap-0 border border-dashed"
 				orientation="horizontal"
@@ -157,6 +160,16 @@
 					>
 				</div>
 			</RadioGroup.Root>
+		</div>
+		<div class="flex h-full basis-1/3 justify-end gap-2">
+			{#if board.path}
+				{@const isCorrect = path
+					.map(([x, y]) => y * board.matrix.length + x + 1)
+					.every((position) => board.path?.includes(position))}
+				<div class="flex flex-row rounded-none border border-dashed px-2.5 py-1.5">
+					<CheckCheck class={[!isCorrect && 'text-muted']} />
+				</div>
+			{/if}
 			{#snippet tile(label: string, data: number)}
 				<p class="flex flex-row divide-x rounded-none border border-dashed px-2.5 py-1.5">
 					<span class="pr-2.5 font-medium">{label}</span>
@@ -168,6 +181,14 @@
 				'Total',
 				path.reduce((sum, [x, y]) => sum + board.matrix[y][x], 0)
 			)}
+			<Button
+				class="h-full rounded-none"
+				variant="outline"
+				size="icon"
+				href="https://github.com/navtoj/gridpath"
+			>
+				<Github />
+			</Button>
 		</div>
 	</header>
 	<div class="flex flex-1 flex-col justify-between border border-dashed p-3">
