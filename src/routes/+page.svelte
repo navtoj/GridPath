@@ -6,15 +6,18 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { Badge } from '$lib/components/ui/badge';
 	import House from '@lucide/svelte/icons/house';
 	import Flag from '@lucide/svelte/icons/flag';
 	import algorithm from '$lib/algorithm';
 	import Shuffle from '@lucide/svelte/icons/shuffle';
+	import boards from '$lib/boards';
+	import { untrack } from 'svelte';
+	import CheckCheck from '@lucide/svelte/icons/check-check';
+	import { browser, dev } from '$app/environment';
 
 	const grid = {
 		min: 2,
-		max: 5,
+		max: dev ? 6 : 5,
 		default: 4
 	};
 	const value = {
@@ -22,37 +25,67 @@
 		max: 9
 	};
 
-	let size = $state(
-		Math.min(
-			Math.max(parseInt(page.url.searchParams.get('size') || `${grid.default}`), grid.min),
+	function getSize(params: URLSearchParams) {
+		return Math.min(
+			Math.max(
+				params.has('size') ? parseInt(params.get('size')!) || grid.default : grid.default,
+				grid.min
+			),
 			grid.max
+		);
+	}
+	function getSeed(params: URLSearchParams, id: string) {
+		return params.has('seed')
+			? parseInt(params.get('seed')!)
+			: parseInt(id.replace(/[a-z]/gi, (char) => `${char.toLowerCase().charCodeAt(0) - 96}`));
+	}
+	function getBoard(n: number, known: boolean, seed: number) {
+		let board = known ? boards.find(({ matrix }) => matrix.length === n) : undefined;
+		let matrix = board?.matrix ?? createMatrix(n, value.min, value.max, seed);
+		return { matrix, path: board?.path };
+	}
+	function getPathMatrix(n: number, coordinates: number[][]) {
+		let matrix = Array.from({ length: n }, () => Array.from({ length: n }, () => -1));
+		let step = 0;
+		for (const [x, y] of coordinates) {
+			matrix[y][x] = step++;
+		}
+		return matrix;
+	}
+
+	let size = $derived(getSize(page.url.searchParams));
+	const id = $props.id();
+	let seed = $derived(getSeed(page.url.searchParams, id));
+	let board = $derived.by(() =>
+		getBoard(size, !untrack(() => page.url.searchParams).has('seed'), seed)
+	);
+	let path = $derived.by(() => algorithm(board.matrix));
+	let pathMatrix = $derived.by(() =>
+		getPathMatrix(
+			untrack(() => size),
+			path
 		)
 	);
-	let matrix = $derived.by(() => createMatrix(size, value.min, value.max));
-	let path: number[][] = $derived.by(() => algorithm(matrix));
-	let matrixPath: number[][] = $derived.by(() => {
-		let result = Array.from({ length: size }, () => Array.from({ length: size }, () => -1));
-		let step = 0;
-		for (const [x, y] of path) {
-			result[y][x] = step++;
-		}
-		return result;
-	});
-	let total: number = $derived.by(() => path.reduce((sum, [x, y]) => sum + matrix[y][x], 0));
 </script>
 
 <main class="flex h-dvh select-none flex-col gap-3 p-4">
 	<header class="flex flex-wrap items-center justify-between gap-3">
 		<div class="flex items-center gap-3">
-			<p class="text-nowrap border border-dashed p-1 px-2.5 text-xl font-semibold">Grid Path</p>
+			<a
+				href="/"
+				data-sveltekit-reload={page.url.searchParams.has('size')}
+				class:cursor-default={page.url.searchParams.has('size') === false}
+				class="text-nowrap border border-dashed p-1 px-2.5 text-xl font-semibold">Grid Path</a
+			>
 			<Button
 				class="rounded-none"
 				variant="outline"
 				size="icon"
 				disabled={size <= grid.min}
 				onclick={() => {
-					size = Math.max(grid.min, size - 1);
-					goto(`?size=${size}`);
+					page.url.searchParams.delete('seed');
+					page.url.searchParams.set('size', Math.max(grid.min, size - 1).toString());
+					goto('?' + page.url.searchParams.toString());
 				}}
 			>
 				<Minus />
@@ -64,63 +97,69 @@
 				size="icon"
 				disabled={size >= grid.max}
 				onclick={() => {
-					size = Math.min(grid.max, size + 1);
-					goto(`?size=${size}`);
+					page.url.searchParams.delete('seed');
+					page.url.searchParams.set('size', Math.min(grid.max, size + 1).toString());
+					goto('?' + page.url.searchParams.toString());
 				}}
 			>
 				<Plus />
 			</Button>
-		</div>
-		<!-- <div class="flex gap-1.5 border border-dashed p-1.5">
-			<Badge
-				class="rounded-none border-red-500 text-red-500"
-				variant="outline">Negative</Badge
-			>
-			<Badge
-				class="rounded-none border-blue-500 text-blue-500"
-				variant="outline">Positive</Badge
-			>
-		</div> -->
-		<div class="flex items-center gap-3">
 			<Button
 				class="rounded-none"
 				variant="outline"
-				size="icon"
-				href={page.url.href}
-				data-sveltekit-reload><Shuffle /></Button
+				onclick={() => {
+					page.url.searchParams.set('seed', `${seed + 1}`);
+					goto('?' + page.url.searchParams.toString());
+				}}><Shuffle />Shuffle</Button
 			>
-			<p class="flex flex-row gap-2.5 rounded-none border border-dashed px-2.5 py-1.5">
-				<span class="font-medium">Steps</span><Separator orientation="vertical" />
-				<span class="font-mono">{path.length - 1}</span>
-			</p>
-			<p class="flex flex-row gap-2.5 rounded-none border border-dashed px-2.5 py-1.5">
-				<span class="font-medium">Total</span><Separator orientation="vertical" />
-				<span class="font-mono">{total}</span>
-			</p>
+		</div>
+		<div class="flex items-center gap-3">
+			{#if board.path}
+				{@const isCorrect =
+					path.map(([x, y]) => y * board.matrix.length + x + 1).join('') === board.path.join('')}
+				<div class="flex flex-row rounded-none border border-dashed px-2.5 py-1.5">
+					<CheckCheck class={[!isCorrect && 'text-muted']} />
+				</div>
+			{/if}
+			{#snippet tile(label: string, data: number)}
+				<p class="flex flex-row divide-x rounded-none border border-dashed px-2.5 py-1.5">
+					<span class="pr-2.5 font-medium">{label}</span>
+					<span class="pl-2.5 font-mono">{data.toString().padStart(2, '0')}</span>
+				</p>
+			{/snippet}
+			{#if dev}
+				{@render tile('Seed', seed)}
+			{/if}
+			{@render tile('Steps', path.length - 1)}
+			{@render tile(
+				'Total',
+				path.reduce((sum, [x, y]) => sum + board.matrix[y][x], 0)
+			)}
 		</div>
 	</header>
 	<div class="flex flex-1 flex-col justify-between border border-dashed p-3">
-		{#each matrix as row, y}
+		{#each board.matrix as row, y}
+			{#snippet pathTile(value: number)}
+				<div class="flex items-center justify-center rounded-full border-2 border-green-500 p-1.5">
+					<p class="font-mono font-medium leading-none text-green-600">{value}</p>
+				</div>
+			{/snippet}
 			<div class="flex items-center justify-between">
 				{#each row as cell, x}
 					{@const isStart = x === 0 && y === 0}
-					{@const isEnd = x === row.length - 1 && y === matrix.length - 1}
-					{@const isInPath = matrixPath[y][x] > -1}
+					{@const isEnd = x === row.length - 1 && y === row.length - 1}
+					{@const isInPath = pathMatrix[y][x] > -1}
 					<div
-						class="flex items-center justify-center p-4"
-						class:border={!isInPath}
-						class:border-2={isInPath}
-						class:border-red-500={cell < 0 && !isStart && !isEnd}
-						class:border-blue-500={cell >= 0 && !isStart && !isEnd}
-						class:border-green-500={(isStart || isEnd) && isInPath}
-						class:dark:border-green-700={(isStart || isEnd) && isInPath}
-						class:bg-green-50={(isStart || isEnd) && isInPath}
-						class:dark:bg-green-500={(isStart || isEnd) && isInPath}
+						class="flex items-center justify-center p-4 {isInPath ? 'border-2' : 'border'} {[
+							isInPath &&
+								(isStart || isEnd) &&
+								'border-green-500 bg-green-50 dark:border-green-500 dark:bg-green-950/50'
+						]} {[!(isStart || isEnd) && (cell < 0 ? 'border-red-500' : 'border-blue-500')]}"
 					>
 						{#if isStart}
-							<House class="-m-1 {isInPath ? 'text-green-500 dark:text-black' : ''}" />
+							<House class="-m-1 {[isInPath && 'text-green-500']}" />
 						{:else if isEnd}
-							<Flag class="-m-1 {isInPath ? 'text-green-500 dark:text-black' : ''}" />
+							<Flag class="-m-1 {[isInPath && 'text-green-500']}" />
 						{:else}
 							<p
 								class="font-mono font-bold leading-none"
@@ -128,38 +167,36 @@
 								class:text-red-500={cell < 0}
 								class:text-blue-500={cell >= 0}
 							>
-								{cell}
 								<!-- {Math.abs(cell)} -->
-								<!-- {matrixPath[y][x]} -->
+								{cell}
+								<!-- {pathMatrix[y][x]} -->
+								<!-- {x}, {y} -->
+								<!-- {y * row.length + x + 1} -->
 							</p>
 						{/if}
 					</div>
 					{#if x < row.length - 1}
-						{@const currentStep = matrixPath[y][x]}
-						{@const nextStep = matrixPath[y][x + 1]}
-						{@const direction =
+						{@const currentStep = pathMatrix[y][x]}
+						{@const nextStep = pathMatrix[y][x + 1]}
+						{@const directionX =
 							currentStep > -1 && nextStep > -1 && Math.abs(currentStep - nextStep) === 1
 								? currentStep < nextStep
 									? 1
 									: -1
 								: 0}
 						<div class="flex flex-1 items-center justify-center">
-							{#if direction === -1}
-								<Separator class="h-0.5 min-w-1 flex-1 bg-green-500" />
-								<div
-									class="flex items-center justify-center rounded-full border-2 border-green-500 p-1.5"
-								>
-									<p class="font-mono font-medium leading-none text-green-600">{currentStep}</p>
-								</div>
-								<Separator class="h-0.5 min-w-1 flex-1 bg-green-500" />
-							{:else if direction === 1}
-								<Separator class="h-0.5 min-w-1 flex-1 bg-green-500" />
-								<div
-									class="flex items-center justify-center rounded-full border-2 border-green-500 p-1.5"
-								>
-									<p class="font-mono font-medium leading-none text-green-600">{nextStep}</p>
-								</div>
-								<Separator class="h-0.5 min-w-1 flex-1 bg-green-500" />
+							{#snippet stepX(step: number)}
+								{#snippet separatorX()}
+									<Separator class="h-0.5 min-w-1 flex-1 bg-green-500" />
+								{/snippet}
+								{@render separatorX()}
+								{@render pathTile(step)}
+								{@render separatorX()}
+							{/snippet}
+							{#if directionX === -1}
+								{@render stepX(currentStep)}
+							{:else if directionX === 1}
+								{@render stepX(nextStep)}
 							{:else}
 								<Separator class="min-w-3 flex-1" />
 							{/if}
@@ -167,50 +204,33 @@
 					{/if}
 				{/each}
 			</div>
-			{#if y < matrix.length - 1}
+			{#if y < row.length - 1}
 				<div class="flex h-full justify-between">
-					{#each row as { }, x}
-						{@const currentStep = matrixPath[y][x]}
-						{@const nextStep = matrixPath[y + 1][x]}
-						{@const direction =
+					{#each { length: row.length }, x}
+						{@const currentStep = pathMatrix[y][x]}
+						{@const nextStep = pathMatrix[y + 1][x]}
+						{@const directionY =
 							currentStep > -1 && nextStep > -1 && Math.abs(currentStep - nextStep) === 1
 								? currentStep < nextStep
 									? 1
 									: -1
 								: 0}
 						<div class="flex flex-col items-center justify-center">
-							{#if direction === -1}
-								<Separator
-									class="min-h-1 w-0.5 flex-1 bg-green-500"
-									orientation="vertical"
-								/>
-								<div
-									class="flex items-center justify-center rounded-full border-2 border-green-500 p-1.5"
-								>
-									<!-- class:ml-5={x === 0}
-									class:mr-5={x === row.length - 1} -->
-									<p class="font-mono font-medium leading-none text-green-600">{currentStep}</p>
-								</div>
-								<Separator
-									class="min-h-1 w-0.5 flex-1 bg-green-500"
-									orientation="vertical"
-								/>
-							{:else if direction === 1}
-								<Separator
-									class="min-h-1 w-0.5 flex-1 bg-green-500"
-									orientation="vertical"
-								/>
-								<div
-									class="flex items-center justify-center rounded-full border-2 border-green-500 p-1.5"
-								>
-									<!-- class:ml-5={x === 0}
-									class:mr-5={x === row.length - 1} -->
-									<p class="font-mono font-medium leading-none text-green-600">{nextStep}</p>
-								</div>
-								<Separator
-									class="min-h-1 w-0.5 flex-1 bg-green-500"
-									orientation="vertical"
-								/>
+							{#snippet stepY(step: number)}
+								{#snippet separatorY()}
+									<Separator
+										class="min-h-1 w-0.5 flex-1 bg-green-500"
+										orientation="vertical"
+									/>
+								{/snippet}
+								{@render separatorY()}
+								{@render pathTile(step)}
+								{@render separatorY()}
+							{/snippet}
+							{#if directionY === -1}
+								{@render stepY(currentStep)}
+							{:else if directionY === 1}
+								{@render stepY(nextStep)}
 							{:else}
 								<Separator
 									class="min-h-3 flex-1 {x === 0 ? 'ml-5' : x === row.length - 1 ? 'mr-5' : ''}"

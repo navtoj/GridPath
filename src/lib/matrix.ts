@@ -1,22 +1,23 @@
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random#getting_a_random_integer_between_two_values_inclusive
-function getRandomIntInclusive(min: number, max: number) {
-	const lowerBound = Math.ceil(min);
-	const upperBound = Math.floor(max);
-	return Math.floor(Math.random() * (upperBound - lowerBound + 1) + lowerBound);
-}
+import random from 'random';
 
-export function createMatrix(n: number, min: number, max: number): number[][] {
-	// generate n rows
-	return Array.from({ length: n }, (_, y) =>
-		// generate n columns
-		Array.from({ length: n }, (_, x) => {
-			// ensure start/end points are always 0
-			if ((x === 0 && y === 0) || (x === n - 1 && y === n - 1)) {
-				return 0;
-			} else {
-				// generate random integers
-				return getRandomIntInclusive(min, max);
-			}
-		})
-	);
+export function createMatrix(n: number, min: number, max: number, seed: number): number[][] {
+	random.use(seed);
+
+	// pre-allocate matrix
+	let matrix: number[][] = new Array(n);
+
+	// generate random integers
+	const randomInts = Array.from({ length: n * n }, () => random.int(min, max));
+
+	// fill matrix rows
+	for (let i = 0; i < n; i++) {
+		matrix[i] = randomInts.slice(i * n, i * n + n);
+	}
+
+	// ensure start/end points are always 0
+	matrix[0][0] = 0;
+	matrix[n - 1][n - 1] = 0;
+
+	// return 2d array
+	return matrix;
 }
