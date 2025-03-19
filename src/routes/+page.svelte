@@ -14,7 +14,7 @@
 
 	const grid = {
 		min: 2,
-		max: 6,
+		max: 5,
 		default: 4
 	};
 	const value = {
