@@ -113,12 +113,14 @@
 						class:border-red-500={cell < 0 && !isStart && !isEnd}
 						class:border-blue-500={cell >= 0 && !isStart && !isEnd}
 						class:border-green-500={(isStart || isEnd) && isInPath}
+						class:dark:border-green-700={(isStart || isEnd) && isInPath}
+						class:bg-green-50={(isStart || isEnd) && isInPath}
+						class:dark:bg-green-500={(isStart || isEnd) && isInPath}
 					>
-						<!-- class:bg-green-50={(isStart || isEnd) && isInPath} -->
 						{#if isStart}
-							<House class="-m-1 {isInPath ? 'text-green-500' : ''}" />
+							<House class="-m-1 {isInPath ? 'text-green-500 dark:text-black' : ''}" />
 						{:else if isEnd}
-							<Flag class="-m-1 {isInPath ? 'text-green-500' : ''}" />
+							<Flag class="-m-1 {isInPath ? 'text-green-500 dark:text-black' : ''}" />
 						{:else}
 							<p
 								class="font-mono font-bold leading-none"
