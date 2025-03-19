@@ -9,10 +9,12 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import House from '@lucide/svelte/icons/house';
 	import Flag from '@lucide/svelte/icons/flag';
+	import algorithm from '$lib/algorithm';
+	import Shuffle from '@lucide/svelte/icons/shuffle';
 
 	const grid = {
 		min: 2,
-		max: 10,
+		max: 6,
 		default: 4
 	};
 	const value = {
@@ -27,95 +29,196 @@
 		)
 	);
 	let matrix = $derived.by(() => createMatrix(size, value.min, value.max));
+	let path: number[][] = $derived.by(() => algorithm(matrix));
+	let matrixPath: number[][] = $derived.by(() => {
+		let result = Array.from({ length: size }, () => Array.from({ length: size }, () => -1));
+		let step = 0;
+		for (const [x, y] of path) {
+			result[y][x] = step++;
+		}
+		return result;
+	});
+	let total: number = $derived.by(() => path.reduce((sum, [x, y]) => sum + matrix[y][x], 0));
 </script>
 
-<div class="flex h-dvh select-none flex-col gap-3 p-4">
-	<div class="flex items-center justify-between gap-3">
-		<div class="flex items-center gap-1.5">
-			<p class="text-nowrap border border-dashed p-1 px-2.5 text-xl font-semibold">Grid Path</p>
-			<p class="border border-dashed px-2.5 py-1.5 font-medium">{size}</p>
-		</div>
+<main class="flex h-dvh select-none flex-col gap-3 p-4">
+	<header class="flex flex-wrap items-center justify-between gap-3">
 		<div class="flex items-center gap-3">
-			<div class="flex gap-1.5">
-				<Button
-					class="rounded-none"
-					variant="outline"
-					size="icon"
-					disabled={size <= grid.min}
-					onclick={() => {
-						size = Math.max(grid.min, size - 1);
-						goto(`?size=${size}`);
-					}}
-				>
-					<Minus />
-				</Button>
-				<Button
-					class="rounded-none"
-					variant="outline"
-					size="icon"
-					disabled={size >= grid.max}
-					onclick={() => {
-						size = Math.min(grid.max, size + 1);
-						goto(`?size=${size}`);
-					}}
-				>
-					<Plus />
-				</Button>
-			</div>
-			<div class="flex gap-1.5 border border-dashed p-1.5">
-				<Badge
-					class="rounded-none border-red-500 text-red-500"
-					variant="secondary">Negative</Badge
-				>
-				<Badge
-					class="rounded-none border-blue-500 text-blue-500"
-					variant="secondary">Positive</Badge
-				>
-			</div>
+			<p class="text-nowrap border border-dashed p-1 px-2.5 text-xl font-semibold">Grid Path</p>
+			<Button
+				class="rounded-none"
+				variant="outline"
+				size="icon"
+				disabled={size <= grid.min}
+				onclick={() => {
+					size = Math.max(grid.min, size - 1);
+					goto(`?size=${size}`);
+				}}
+			>
+				<Minus />
+			</Button>
+			<p class="rounded-none border border-dashed px-2.5 py-1.5 font-medium">{size}</p>
+			<Button
+				class="rounded-none"
+				variant="outline"
+				size="icon"
+				disabled={size >= grid.max}
+				onclick={() => {
+					size = Math.min(grid.max, size + 1);
+					goto(`?size=${size}`);
+				}}
+			>
+				<Plus />
+			</Button>
 		</div>
-	</div>
+		<!-- <div class="flex gap-1.5 border border-dashed p-1.5">
+			<Badge
+				class="rounded-none border-red-500 text-red-500"
+				variant="outline">Negative</Badge
+			>
+			<Badge
+				class="rounded-none border-blue-500 text-blue-500"
+				variant="outline">Positive</Badge
+			>
+		</div> -->
+		<div class="flex items-center gap-3">
+			<Button
+				class="rounded-none"
+				variant="outline"
+				size="icon"
+				href={page.url.href}
+				data-sveltekit-reload><Shuffle /></Button
+			>
+			<p class="flex flex-row gap-2.5 rounded-none border border-dashed px-2.5 py-1.5">
+				<span class="font-medium">Steps</span><Separator orientation="vertical" />
+				<span class="font-mono">{path.length - 1}</span>
+			</p>
+			<p class="flex flex-row gap-2.5 rounded-none border border-dashed px-2.5 py-1.5">
+				<span class="font-medium">Total</span><Separator orientation="vertical" />
+				<span class="font-mono">{total}</span>
+			</p>
+		</div>
+	</header>
 	<div class="flex flex-1 flex-col justify-between border border-dashed p-3">
 		{#each matrix as row, y}
 			<div class="flex items-center justify-between">
 				{#each row as cell, x}
 					{@const isStart = x === 0 && y === 0}
 					{@const isEnd = x === row.length - 1 && y === matrix.length - 1}
+					{@const isInPath = matrixPath[y][x] > -1}
 					<div
-						class="flex items-center justify-center border p-4"
+						class="flex items-center justify-center p-4"
+						class:border={!isInPath}
+						class:border-2={isInPath}
 						class:border-red-500={cell < 0 && !isStart && !isEnd}
 						class:border-blue-500={cell >= 0 && !isStart && !isEnd}
+						class:border-green-500={(isStart || isEnd) && isInPath}
 					>
+						<!-- class:bg-green-50={(isStart || isEnd) && isInPath} -->
 						{#if isStart}
-							<House class="-m-1" />
+							<House class="-m-1 {isInPath ? 'text-green-500' : ''}" />
 						{:else if isEnd}
-							<Flag class="-m-1" />
+							<Flag class="-m-1 {isInPath ? 'text-green-500' : ''}" />
 						{:else}
 							<p
-								class="font-mono leading-none"
+								class="font-mono font-bold leading-none"
+								class:font-bold={isInPath}
 								class:text-red-500={cell < 0}
 								class:text-blue-500={cell >= 0}
 							>
-								{Math.abs(cell)}
+								{cell}
+								<!-- {Math.abs(cell)} -->
+								<!-- {matrixPath[y][x]} -->
 							</p>
-							<!-- aspect-square max-h-fit max-w-fit -->
-							<!-- {y * grid.length + 1 + x} -->
 						{/if}
 					</div>
 					{#if x < row.length - 1}
-						<Separator class="min-w-3 flex-1" />
+						{@const currentStep = matrixPath[y][x]}
+						{@const nextStep = matrixPath[y][x + 1]}
+						{@const direction =
+							currentStep > -1 && nextStep > -1 && Math.abs(currentStep - nextStep) === 1
+								? currentStep < nextStep
+									? 1
+									: -1
+								: 0}
+						<div class="flex flex-1 items-center justify-center">
+							{#if direction === -1}
+								<Separator class="h-0.5 min-w-1 flex-1 bg-green-500" />
+								<div
+									class="flex items-center justify-center rounded-full border-2 border-green-500 p-1.5"
+								>
+									<p class="font-mono font-medium leading-none text-green-600">{currentStep}</p>
+								</div>
+								<Separator class="h-0.5 min-w-1 flex-1 bg-green-500" />
+							{:else if direction === 1}
+								<Separator class="h-0.5 min-w-1 flex-1 bg-green-500" />
+								<div
+									class="flex items-center justify-center rounded-full border-2 border-green-500 p-1.5"
+								>
+									<p class="font-mono font-medium leading-none text-green-600">{nextStep}</p>
+								</div>
+								<Separator class="h-0.5 min-w-1 flex-1 bg-green-500" />
+							{:else}
+								<Separator class="min-w-3 flex-1" />
+							{/if}
+						</div>
 					{/if}
 				{/each}
 			</div>
 			{#if y < matrix.length - 1}
 				<div class="flex h-full justify-between">
-					{#each row as cell, x}
-						<Separator
-							class="min-h-3 {x === 0 ? 'ml-5' : x === row.length - 1 ? 'mr-5' : ''}"
-							orientation="vertical"
-						/>
+					{#each row as { }, x}
+						{@const currentStep = matrixPath[y][x]}
+						{@const nextStep = matrixPath[y + 1][x]}
+						{@const direction =
+							currentStep > -1 && nextStep > -1 && Math.abs(currentStep - nextStep) === 1
+								? currentStep < nextStep
+									? 1
+									: -1
+								: 0}
+						<div class="flex flex-col items-center justify-center">
+							{#if direction === -1}
+								<Separator
+									class="min-h-1 w-0.5 flex-1 bg-green-500"
+									orientation="vertical"
+								/>
+								<div
+									class="flex items-center justify-center rounded-full border-2 border-green-500 p-1.5"
+								>
+									<!-- class:ml-5={x === 0}
+									class:mr-5={x === row.length - 1} -->
+									<p class="font-mono font-medium leading-none text-green-600">{currentStep}</p>
+								</div>
+								<Separator
+									class="min-h-1 w-0.5 flex-1 bg-green-500"
+									orientation="vertical"
+								/>
+							{:else if direction === 1}
+								<Separator
+									class="min-h-1 w-0.5 flex-1 bg-green-500"
+									orientation="vertical"
+								/>
+								<div
+									class="flex items-center justify-center rounded-full border-2 border-green-500 p-1.5"
+								>
+									<!-- class:ml-5={x === 0}
+									class:mr-5={x === row.length - 1} -->
+									<p class="font-mono font-medium leading-none text-green-600">{nextStep}</p>
+								</div>
+								<Separator
+									class="min-h-1 w-0.5 flex-1 bg-green-500"
+									orientation="vertical"
+								/>
+							{:else}
+								<Separator
+									class="min-h-3 flex-1 {x === 0 ? 'ml-5' : x === row.length - 1 ? 'mr-5' : ''}"
+									orientation="vertical"
+								/>
+							{/if}
+						</div>
 					{/each}
 				</div>
 			{/if}
 		{/each}
 	</div>
-</div>
+</main>
