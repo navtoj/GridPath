@@ -21,11 +21,8 @@
 	const grid = {
 		min: 2,
 		max: 5,
-		default: 4
-	};
-	const value = {
-		min: -9,
-		max: 9
+		default: 4,
+		range: 9
 	};
 
 	function getSize(params: URLSearchParams) {
@@ -44,7 +41,7 @@
 	}
 	function getBoard(n: number, known: boolean, seed: number) {
 		let board = known ? boards.find(({ matrix }) => matrix.length === n) : undefined;
-		let matrix = board?.matrix ?? createMatrix(n, value.min, value.max, seed);
+		let matrix = board?.matrix ?? createMatrix(n, grid.range, seed);
 		return { matrix, path: board?.path };
 	}
 	function getPathMatrix(n: number, coordinates: number[][]) {
@@ -203,11 +200,12 @@
 								class:text-red-500={cell < 0}
 								class:text-blue-500={cell >= 0}
 							>
-								<!-- {Math.abs(cell)} -->
 								{cell}
+								<!-- {Math.abs(cell)} -->
 								<!-- {pathMatrix[y][x]} -->
 								<!-- {x}, {y} -->
 								<!-- {y * row.length + x + 1} -->
+								<!-- {(x % 2 === 0) === (y % 2 === 0)} -->
 							</p>
 						{/if}
 					</div>

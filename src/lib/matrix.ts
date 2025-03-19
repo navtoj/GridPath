@@ -1,17 +1,19 @@
 import random from 'random';
 
-export function createMatrix(n: number, min: number, max: number, seed: number): number[][] {
+export function createMatrix(n: number, range: number, seed: number): number[][] {
 	random.use(seed);
 
-	// pre-allocate matrix
-	let matrix: number[][] = new Array(n);
+	// pre-allocate rows and columns
+	let matrix: number[][] = Array.from({ length: n }, () => Array.from({ length: n }));
 
-	// generate random integers
-	const randomInts = Array.from({ length: n * n }, () => random.int(min, max));
-
-	// fill matrix rows
-	for (let i = 0; i < n; i++) {
-		matrix[i] = randomInts.slice(i * n, i * n + n);
+	// fill matrix with random integers
+	for (let y = 0; y < n; y++) {
+		for (let x = 0; x < n; x++) {
+			const isRowEven = y % 2 === 0;
+			const isColEven = x % 2 === 0;
+			// alternate +/- values
+			matrix[y][x] = isRowEven === isColEven ? random.int(-range, -1) : random.int(1, range);
+		}
 	}
 
 	// ensure start/end points are always 0
