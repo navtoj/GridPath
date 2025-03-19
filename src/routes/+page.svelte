@@ -8,16 +8,19 @@
 	import { goto } from '$app/navigation';
 	import House from '@lucide/svelte/icons/house';
 	import Flag from '@lucide/svelte/icons/flag';
-	import algorithm from '$lib/algorithm';
+	import dfs from '$lib/algorithms/dfs';
+	import aStar from '$lib/algorithms/a-star';
 	import Shuffle from '@lucide/svelte/icons/shuffle';
 	import boards from '$lib/boards';
 	import { untrack } from 'svelte';
 	import CheckCheck from '@lucide/svelte/icons/check-check';
-	import { browser, dev } from '$app/environment';
+	import * as RadioGroup from '$lib/components/ui/radio-group';
+	import { Label } from '$lib/components/ui/label';
+	import { algorithm } from '$lib/stores';
 
 	const grid = {
 		min: 2,
-		max: dev ? 6 : 5,
+		max: 5,
 		default: 4
 	};
 	const value = {
@@ -59,7 +62,16 @@
 	let board = $derived.by(() =>
 		getBoard(size, !untrack(() => page.url.searchParams).has('seed'), seed)
 	);
-	let path = $derived.by(() => algorithm(board.matrix));
+	let path = $derived.by(() => {
+		if ($algorithm === 'dfs') {
+			return dfs(board.matrix);
+		} else if ($algorithm === 'a*') {
+			const algo = new aStar(board.matrix);
+			return algo.findBestPath();
+		} else {
+			return [];
+		}
+	});
 	let pathMatrix = $derived.by(() =>
 		getPathMatrix(
 			untrack(() => size),
@@ -121,15 +133,39 @@
 					<CheckCheck class={[!isCorrect && 'text-muted']} />
 				</div>
 			{/if}
+			<RadioGroup.Root
+				class="grid-flow-col gap-0 border border-dashed"
+				orientation="horizontal"
+				required
+				bind:value={$algorithm}
+			>
+				<div class="flex items-center pl-2.5 {[$algorithm === 'dfs' && 'bg-muted']}">
+					<RadioGroup.Item
+						value="dfs"
+						id="dfs"
+					/>
+					<Label
+						class="ml-0 inline-flex h-full cursor-pointer items-center p-2.5"
+						for="dfs">DFS</Label
+					>
+				</div>
+				<div class="flex items-center pl-2.5 {[$algorithm === 'a*' && 'bg-muted']}">
+					<RadioGroup.Item
+						value="a*"
+						id="a*"
+					/>
+					<Label
+						class="ml-0 inline-flex h-full cursor-pointer items-center p-2.5"
+						for="a*">A*</Label
+					>
+				</div>
+			</RadioGroup.Root>
 			{#snippet tile(label: string, data: number)}
 				<p class="flex flex-row divide-x rounded-none border border-dashed px-2.5 py-1.5">
 					<span class="pr-2.5 font-medium">{label}</span>
 					<span class="pl-2.5 font-mono">{data.toString().padStart(2, '0')}</span>
 				</p>
 			{/snippet}
-			{#if dev}
-				{@render tile('Seed', seed)}
-			{/if}
 			{@render tile('Steps', path.length - 1)}
 			{@render tile(
 				'Total',
