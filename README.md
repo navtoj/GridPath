@@ -8,9 +8,13 @@
 - Do not revisit a coordinate.
 - Do not move diagonally.
 
-|                                Demo → https://gridpath.pages.dev                                 |
-| :----------------------------------------------------------------------------------------------: |
-| [![App Page](./.github/assets/grid-5-seed-231.png)](https://gridpath.pages.dev/?size=5&seed=231) |
+<table>
+  <thead><tr><th>Demo → <a href="https://gridpath.pages.dev">gridpath.pages.dev</a></th></tr></thead>
+  <tr><td><picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./.github/assets/grid-5-seed-231-dark.png">
+    <img alt="App Landing Page" src="./.github/assets/grid-5-seed-231-light.png">
+  </picture></td></tr>
+</table>
 
 ## Requirements
 
