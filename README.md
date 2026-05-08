@@ -9,7 +9,7 @@
 - Do not move diagonally.
 
 <table>
-  <thead><tr><th>Demo → <a href="https://gridpath.pages.dev">gridpath.pages.dev</a></th></tr></thead>
+  <thead><tr><th><a href="https://gridpath.pages.dev">Live Demo</a></th></tr></thead>
   <tr><td><picture>
     <source media="(prefers-color-scheme: dark)" srcset="./.github/assets/grid-5-seed-231-dark.png">
     <img alt="App Landing Page" src="./.github/assets/grid-5-seed-231-light.png">
