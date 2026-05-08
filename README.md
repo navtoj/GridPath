@@ -10,10 +10,10 @@
 
 <table>
   <thead><tr><th><a href="https://gridpath.pages.dev">Live Demo</a></th></tr></thead>
-  <tr><td><picture>
+  <tr><td><a href="https://gridpath.pages.dev"><picture>
     <source media="(prefers-color-scheme: dark)" srcset="./.github/assets/grid-5-seed-231-dark.png">
     <img alt="App Landing Page" src="./.github/assets/grid-5-seed-231-light.png">
-  </picture></td></tr>
+  </picture></a></td></tr>
 </table>
 
 ## Requirements
